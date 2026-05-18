@@ -53,7 +53,6 @@
         .search-box {
             padding: 15px;
             background-color: #ffffff;
-            border-bottom: 1px solid #dee2e6;
             display: flex;
             gap: 10px; /* 요소 간 간격 */
         }
@@ -67,9 +66,9 @@
         }
 
         .search-box button {
-            width: 70px;
+            width: 60px;
             padding: 10px;
-            background-color: #8b4513; /* 화장실(변)을 상징하는 갈색 */
+            background-color: #8b4513; /* 화장실을 상징하는 갈색 */
             color: white;
             border: none;
             border-radius: 8px; /* 둥근 모서리 */
@@ -81,6 +80,32 @@
 
         .search-box button:hover {
             background-color: #6a3510; /* 호버 시 더 짙은 갈색 */
+        }
+
+        /* 빠른 검색(필터) 버튼 스타일 */
+        .quick-filters {
+            display: flex;
+            gap: 5px;
+            padding: 0 15px 15px 15px;
+            background-color: #ffffff;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .quick-filters button {
+            flex: 1;
+            padding: 8px 0;
+            background-color: #f1f3f5;
+            border: 1px solid #ced4da;
+            border-radius: 20px;
+            font-size: 12px;
+            cursor: pointer;
+            color: #495057;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+
+        .quick-filters button:hover {
+            background-color: #e2e6ea;
         }
 
         /* 검색 결과가 많아지면 스크롤이 생기도록 설정 */
@@ -158,12 +183,20 @@
         <div class="left-panel">
             <div class="header">
                 <h1>🆘 급똥구조대</h1>
-                <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">내 주변 가장 가까운 화장실 🚽💨</div>
+                <div style="font-size: 12px; opacity: 0.8; margin-top: 3px;">내 주변 가장 가까운 안전지대 🏃💨</div>
             </div>
+            
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="급해 급해! 주변 화장실 검색" value="공중 화장실">
+                <input type="text" id="searchInput" placeholder="검색어 입력" value="공중 화장실">
                 <button id="searchBtn">검색</button>
             </div>
+
+            <div class="quick-filters">
+                <button id="btnToilet">🚽 공중화장실</button>
+                <button id="btnStarbucks">☕ 스타벅스</button>
+                <button id="btnMall">🏢 개방 상가</button>
+            </div>
+
             <ul id="placesList" class="result-list">
                 <li style="text-align: center; color: #888; font-size: 14px; padding-top: 30px;">
                     위치 권한 허용 후 '검색' 버튼을 눌러보세요!
@@ -182,221 +215,202 @@
         // 지도가 완전히 로드된 후에 코드가 실행되도록 감쌉니다.
         kakao.maps.load(function() {
             
-            // 1. 지도를 표시할 HTML 요소를 가져옵니다.
             const mapContainer = document.getElementById('map'); 
-            
-            // 2. 지도의 기본 옵션을 설정합니다.
             const mapOptions = {
-                center: new kakao.maps.LatLng(37.566826, 126.9786567), // 임시 초기 위치 (서울시청)
-                level: 5 // 요청하신 지도 확대 레벨 5
+                center: new kakao.maps.LatLng(37.566826, 126.9786567),
+                level: 5 
             };  
-
-            // 3. 지도를 생성합니다.
             const map = new kakao.maps.Map(mapContainer, mapOptions); 
 
-            // 현재 위치를 저장할 전역 변수 (검색할 때 중심 좌표로 쓰기 위함)
             let userPosition = null; 
+            let currentLocationMarker; 
+            let currentMeOverlay; 
 
-            // 현재 위치에 표시할 오버레이 객체들
-            let currentLocationMarker; // 사용자의 정확도 원 (Circle)
-            let currentMeOverlay; // 나를 나타내는 작은 점 (CustomOverlay)
-
-            // 4. 사용자의 현재 위치 권한을 요청하고 지도를 이동시킵니다.
+            // 사용자의 현재 위치 요청
             if (navigator.geolocation) {
-                // GeoLocation을 이용해서 접속 위치를 얻어옵니다.
                 navigator.geolocation.getCurrentPosition(
                     function(position) {
-                        // 사용자의 현재 위도와 경도
                         const lat = position.coords.latitude; 
                         const lon = position.coords.longitude; 
                         
-                        // 현재 위치 좌표를 userPosition 변수에 저장합니다! (검색 시 활용)
                         userPosition = new kakao.maps.LatLng(lat, lon);
-
-                        // 지도의 중심을 현재 위치로 부드럽게 이동시킵니다.
                         map.setCenter(userPosition);
 
-                        // --- 사용자의 현재 위치 오버레이 생성 (푸른색 원 + 점) ---
-                        // 사용자 주변에 정확도 원 표시
+                        // 내 위치 정확도 원 표시
                         currentLocationMarker = new kakao.maps.Circle({
                             center: userPosition,
-                            radius: 100, // 미터 단위 반경
-                            strokeWeight: 1, // 선의 두께
-                            strokeColor: '#3d61f7', // 파란색 선
+                            radius: 100,
+                            strokeWeight: 1,
+                            strokeColor: '#3d61f7',
                             strokeOpacity: 0.5,
-                            fillColor: '#3d61f7', // 파란색 채우기
-                            fillOpacity: 0.1 // 아주 연하게
+                            fillColor: '#3d61f7',
+                            fillOpacity: 0.1
                         });
                         currentLocationMarker.setMap(map);
 
-                        // 나를 나타내는 작은 점 커스텀 오버레이 표시
+                        // 내 위치 커스텀 오버레이 (파란 점)
                         currentMeOverlay = new kakao.maps.CustomOverlay({
                             position: userPosition,
-                            content: '<div style="width:10px;height:10px;background-color:#3d61f7;border:2px solid white;border-radius:50%;box-shadow:0 0 5px rgba(0,0,0,0.3);transform:translate(-50%,-50%);"></div><div style="font-size:16px; transform:translate(-50%, -100%); margin-top:-5px;">Me 🏃</div>'
+                            content: '<div style="width:12px;height:12px;background-color:#3d61f7;border:2px solid white;border-radius:50%;box-shadow:0 0 5px rgba(0,0,0,0.3);transform:translate(-50%,-50%);"></div><div style="font-size:16px; font-weight:bold; color:#1e3a8a; text-shadow:1px 1px 2px white; transform:translate(-50%, -100%); margin-top:-5px;">Me🏃</div>'
                         });
                         currentMeOverlay.setMap(map);
                     },
                     function(error) {
                         console.error("위치 정보를 가져올 수 없습니다:", error);
-                        alert("위치 권한을 허용하지 않아 기본 위치로 표시됩니다.");
                     }
                 );
-            } else {
-                alert("현재 브라우저에서는 위치 정보를 지원하지 않습니다.");
             }
 
-            // --- 추가된 장소 검색 기능 코드 시작 ---
-
-            // 장소 검색 객체를 생성합니다
+            // 장소 검색 기능 설정
             const ps = new kakao.maps.services.Places();  
-
-            // 검색 결과 마커들을 담을 배열입니다
             let markers = [];
-
-            // 검색 결과 마커를 클릭했을 때 팝업을 띄울 인포윈도우 객체입니다
             const infowindow = new kakao.maps.InfoWindow({zIndex:1});
 
-            const searchBtn = document.getElementById('searchBtn');
-            const searchInput = document.getElementById('searchInput');
+            let currentEmoji = '🚽'; // 검색 테마에 맞춰 변경될 이모지 변수
 
-            // 검색 버튼 클릭 이벤트 리스너 등록
-            searchBtn.addEventListener('click', function() {
-                const keyword = searchInput.value;
+            // 통합 검색 실행 함수
+            function executeSearch(keyword) {
                 if (!keyword) {
                     alert('검색어를 입력해주세요!');
                     return;
                 }
                 
-                // 검색 옵션 설정 (거리순 정렬의 핵심)
+                // 키워드에 따라 아이콘 이모지 자동 변경
+                if(keyword.includes('스타벅스')) {
+                    currentEmoji = '☕';
+                } else if(keyword.includes('상가') || keyword.includes('쇼핑몰') || keyword.includes('빌딩')) {
+                    currentEmoji = '🏢';
+                } else {
+                    currentEmoji = '🚽';
+                }
+
+                // 검색어 창 내용 업데이트 (버튼으로 검색했을 때를 위함)
+                document.getElementById('searchInput').value = keyword;
+
                 let searchOptions = {};
-                
-                // 만약 GPS로 내 위치를 성공적으로 받아왔다면 옵션에 추가합니다
                 if (userPosition) {
                     searchOptions = {
-                        location: userPosition, // 내 현재 위치를 중심으로
-                        radius: 2000, // 반경 2km 이내에서만 검색 (너무 먼 곳은 제외)
-                        sort: kakao.maps.services.SortBy.DISTANCE // 거리가 가까운 순서대로 정렬!
+                        location: userPosition, 
+                        radius: 2000, 
+                        sort: kakao.maps.services.SortBy.DISTANCE 
                     };
                 }
 
-                // 키워드와 옵션을 함께 담아서 장소검색을 요청합니다
                 ps.keywordSearch(keyword, placesSearchCB, searchOptions);
+            }
+
+            // 직접 검색 버튼 클릭 이벤트
+            document.getElementById('searchBtn').addEventListener('click', function() {
+                executeSearch(document.getElementById('searchInput').value);
             });
 
-            // 장소검색이 완료됐을 때 호출되는 콜백함수 입니다
+            // 키보드 엔터키를 눌러도 검색되도록 이벤트 추가
+            document.getElementById('searchInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    executeSearch(this.value);
+                }
+            });
+
+            // 빠른 검색 버튼 이벤트 연동
+            document.getElementById('btnToilet').addEventListener('click', function() { executeSearch("공중 화장실"); });
+            document.getElementById('btnStarbucks').addEventListener('click', function() { executeSearch("스타벅스"); });
+            document.getElementById('btnMall').addEventListener('click', function() { executeSearch("대형 상가 화장실"); });
+
+            // 검색 완료 콜백 함수
             function placesSearchCB(data, status, pagination) {
                 if (status === kakao.maps.services.Status.OK) {
-                    // 정상적으로 검색이 완료됐으면 검색 목록과 마커를 표출합니다
                     displayPlaces(data);
                 } else if (status === kakao.maps.services.Status.ZERO_RESULT) {
                     alert('주변에 검색 결과가 존재하지 않습니다.');
-                    return;
                 } else if (status === kakao.maps.services.Status.ERROR) {
                     alert('검색 결과 중 오류가 발생했습니다.');
-                    return;
                 }
             }
 
-            // 검색 결과 목록과 마커를 표출하는 함수입니다
+            // 결과 표출 함수
             function displayPlaces(places) {
                 const listEl = document.getElementById('placesList');
-                const bounds = new kakao.maps.LatLngBounds(); // 검색 결과에 맞춰 지도 범위를 재설정하기 위한 객체
+                const bounds = new kakao.maps.LatLngBounds(); 
 
-                // 검색 결과 목록에 추가된 항목들을 모두 제거합니다
                 removeAllChildNodes(listEl);
-
-                // 지도에 표시되고 있는 기존 마커들을 모두 제거합니다
                 removeMarker();
 
                 for (let i = 0; i < places.length; i++) {
-                    // 마커를 생성하고 지도에 표시합니다
                     const placePosition = new kakao.maps.LatLng(places[i].y, places[i].x);
                     
-                    // --- 검색 결과 마커를 갈색 핀 디자인으로 변경 ---
-                    const brownMarkerImageUrl = '//t1.daumcdn.net/localimg/localimages/07/mapapidoc/marker_brown.png'; 
-                    const markerImageSize = new kakao.maps.Size(37, 42); // 마커 이미지의 크기
-                    const markerImageOptions = {
-                        offset: new kakao.maps.Point(13, 37) // 마커 이미지 안의 기준 좌표
-                    };
-                    const toiletMarkerImage = new kakao.maps.MarkerImage(brownMarkerImageUrl, markerImageSize, markerImageOptions);
+                    // --- 외부 링크 의존 없는, 100% 안전한 SVG 마커 디자인 생성 ---
+                    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="40" viewBox="0 0 36 40">
+                        <path fill="#8b4513" d="M18 0C8.1 0 0 8.1 0 18c0 13.5 18 22 18 22s18-8.5 18-22C36 8.1 27.9 0 18 0z"/>
+                        <circle fill="#ffffff" cx="18" cy="15" r="9"/>
+                    </svg>`;
+                    // SVG 코드를 Base64가 아닌 URL 인코딩하여 가볍고 안전하게 처리
+                    const customMarkerUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString); 
+                    const markerImageSize = new kakao.maps.Size(36, 40); 
+                    const markerImageOptions = { offset: new kakao.maps.Point(18, 40) }; 
+                    const customMarkerImage = new kakao.maps.MarkerImage(customMarkerUrl, markerImageSize, markerImageOptions);
 
-                    // 마커 생성 시 이미지 옵션 추가
                     const marker = new kakao.maps.Marker({
                         position : placePosition,
-                        image : toiletMarkerImage
+                        image : customMarkerImage // 외부 이미지가 아닌 SVG 코드를 사용하여 절대 깨지지 않음
                     });
-                    marker.setMap(map); // 지도 위에 마커를 표출합니다
-                    markers.push(marker); // 배열에 생성된 마커를 추가하여 나중에 지울 수 있게 합니다
                     
-                    // 장소 이름과 주소 정보를 변수에 담습니다 (도로명 주소가 없으면 지번 주소 사용)
+                    marker.setMap(map); 
+                    markers.push(marker); 
+                    
                     const placeName = places[i].place_name;
                     const addressName = places[i].road_address_name || places[i].address_name;
-                    
-                    // (선택사항) 카카오맵 API는 거리를 미터 단위로 알려주기도 합니다.
                     const distance = places[i].distance ? places[i].distance + 'm' : ''; 
 
-                    // 검색 결과 항목(li) Element를 생성합니다 (거리 정보 추가)
                     const itemEl = getListItem(placeName, addressName, distance);
 
-                    // 지도 범위를 설정하기 위해 객체에 좌표를 추가합니다
                     bounds.extend(placePosition);
 
-                    // 마커와 검색결과 항목에 클릭 이벤트를 등록합니다
                     (function(marker, title, address) {
-                        // 마커를 클릭했을 때 팝업 표시
                         kakao.maps.event.addListener(marker, 'click', function() {
                             displayInfowindow(marker, title, address);
                         });
 
-                        // 왼쪽 리스트 항목을 클릭했을 때도 팝업을 표시하고 마커 위치로 이동
                         itemEl.onclick = function () {
                             displayInfowindow(marker, title, address);
                             map.panTo(marker.getPosition());
                         };
                     })(marker, placeName, addressName);
 
-                    // 생성된 항목을 리스트에 추가합니다
                     listEl.appendChild(itemEl);
                 }
 
-                // 내 위치도 포함해서 지도가 축소/확대 되도록 추가
                 if(userPosition) {
                     bounds.extend(userPosition);
                 }
-
-                // 검색된 모든 장소가 보이도록 지도의 범위를 재설정합니다
                 map.setBounds(bounds);
             }
 
-            // 지도 위에 표시되고 있는 기존 마커를 모두 제거하는 함수입니다
             function removeMarker() {
                 for (let i = 0; i < markers.length; i++) {
                     markers[i].setMap(null);
                 }
-                markers = []; // 배열을 초기화합니다
+                markers = []; 
             }
 
-            // 검색결과 항목을 HTML Element로 반환하는 함수입니다 (거리 표시 추가)
             function getListItem(placeName, addressName, distance) {
                 const el = document.createElement('li');
                 let distanceHtml = distance ? '<span style="color: #d9534f; font-weight: bold; font-size: 12px;">🚶 ' + distance + '</span>' : '';
                 
-                el.innerHTML = '<strong class="place-name">🚽 ' + placeName + ' ' + distanceHtml + '</strong>' + 
+                // 검색 테마에 맞춘 이모지(currentEmoji) 사용
+                el.innerHTML = '<strong class="place-name">' + currentEmoji + ' ' + placeName + ' ' + distanceHtml + '</strong>' + 
                                '<span class="place-address">' + addressName + '</span>';
                 return el;
             }
 
-            // 검색결과 목록의 자식 Element를 모두 제거하는 함수입니다
             function removeAllChildNodes(el) {
                 while (el.hasChildNodes()) {
                     el.removeChild(el.lastChild);
                 }
             }
 
-            // 마커를 클릭했을 때 호출되는 함수입니다. 인포윈도우에 장소명과 주소를 표시합니다
             function displayInfowindow(marker, title, address) {
                 const content = '<div class="custom_infowindow">' +
-                                '<strong>🚽 ' + title + '</strong>' +
+                                '<strong>' + currentEmoji + ' ' + title + '</strong>' +
                                 '<span>' + address + '</span>' +
                                 '</div>';
                 infowindow.setContent(content);
