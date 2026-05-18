@@ -187,12 +187,12 @@
             </div>
             
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="검색어 입력" value="공중 화장실">
+                <input type="text" id="searchInput" placeholder="검색어 입력" value="화장실">
                 <button id="searchBtn">검색</button>
             </div>
 
             <div class="quick-filters">
-                <button id="btnToilet">🚽 공중화장실</button>
+                <button id="btnToilet">🚽 화장실</button>
                 <button id="btnStarbucks">☕ 스타벅스</button>
                 <button id="btnMall">🏢 개방 상가</button>
             </div>
@@ -284,7 +284,7 @@
                     currentEmoji = '🚽';
                 }
 
-                // 검색어 창 내용 업데이트 (버튼으로 검색했을 때를 위함)
+                // 검색어 창 내용 업데이트
                 document.getElementById('searchInput').value = keyword;
 
                 let searchOptions = {};
@@ -311,10 +311,10 @@
                 }
             });
 
-            // 빠른 검색 버튼 이벤트 연동
-            document.getElementById('btnToilet').addEventListener('click', function() { executeSearch("공중 화장실"); });
+            // 빠른 검색 버튼 이벤트 연동 (키워드를 "화장실"로 단순화)
+            document.getElementById('btnToilet').addEventListener('click', function() { executeSearch("화장실"); });
             document.getElementById('btnStarbucks').addEventListener('click', function() { executeSearch("스타벅스"); });
-            document.getElementById('btnMall').addEventListener('click', function() { executeSearch("대형 상가 화장실"); });
+            document.getElementById('btnMall').addEventListener('click', function() { executeSearch("상가"); });
 
             // 검색 완료 콜백 함수
             function placesSearchCB(data, status, pagination) {
@@ -338,20 +338,16 @@
                 for (let i = 0; i < places.length; i++) {
                     const placePosition = new kakao.maps.LatLng(places[i].y, places[i].x);
                     
-                    // --- 외부 링크 의존 없는, 100% 안전한 SVG 마커 디자인 생성 ---
-                    const svgString = `<svg xmlns="http://www.w3.org/2000/svg" width="36" height="40" viewBox="0 0 36 40">
-                        <path fill="#8b4513" d="M18 0C8.1 0 0 8.1 0 18c0 13.5 18 22 18 22s18-8.5 18-22C36 8.1 27.9 0 18 0z"/>
-                        <circle fill="#ffffff" cx="18" cy="15" r="9"/>
-                    </svg>`;
-                    // SVG 코드를 Base64가 아닌 URL 인코딩하여 가볍고 안전하게 처리
-                    const customMarkerUrl = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svgString); 
+                    // --- HTTPS 보안 프로토콜에서도 절대 깨지지 않는 인라인 XML SVG 마커 디자인 ---
+                    const svgString = '<svg xmlns="http://www.w3.org/2000/svg" width="36" height="40" viewBox="0 0 36 40"><path fill="%238b4513" d="M18 0C8.1 0 0 8.1 0 18c0 13.5 18 22 18 22s18-8.5 18-22C36 8.1 27.9 0 18 0z"/><circle fill="%23ffffff" cx="18" cy="15" r="9"/></svg>';
+                    const customMarkerUrl = 'data:image/svg+xml;utf-8,' + svgString; 
                     const markerImageSize = new kakao.maps.Size(36, 40); 
                     const markerImageOptions = { offset: new kakao.maps.Point(18, 40) }; 
                     const customMarkerImage = new kakao.maps.MarkerImage(customMarkerUrl, markerImageSize, markerImageOptions);
 
                     const marker = new kakao.maps.Marker({
                         position : placePosition,
-                        image : customMarkerImage // 외부 이미지가 아닌 SVG 코드를 사용하여 절대 깨지지 않음
+                        image : customMarkerImage 
                     });
                     
                     marker.setMap(map); 
@@ -396,7 +392,6 @@
                 const el = document.createElement('li');
                 let distanceHtml = distance ? '<span style="color: #d9534f; font-weight: bold; font-size: 12px;">🚶 ' + distance + '</span>' : '';
                 
-                // 검색 테마에 맞춘 이모지(currentEmoji) 사용
                 el.innerHTML = '<strong class="place-name">' + currentEmoji + ' ' + placeName + ' ' + distanceHtml + '</strong>' + 
                                '<span class="place-address">' + addressName + '</span>';
                 return el;
